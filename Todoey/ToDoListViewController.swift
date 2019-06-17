@@ -11,7 +11,7 @@ import UIKit
 class ToDoListViewController: UITableViewController {
     
     //MARK: Properties
-    let itemArray = ["Find Mike", "Buy Eggos", "Destroy Demog"]
+    var itemArray = ["Find Mike", "Buy Eggos", "Destroy Demog"]
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -46,6 +46,43 @@ class ToDoListViewController: UITableViewController {
         tableView.deselectRow(at: indexPath, animated: true)
         //so that it goes back to being white and unselected
 
+    }
+    
+    //MARK: Add new items
+    @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
+        
+        var textField = UITextField()
+        //scope of entire addButtonPressed action
+        
+        //what should happen when user pressed the add button
+        //Popup or UIALertController
+        let alert = UIAlertController(title: "Add new Todoey Item", message: "", preferredStyle: .alert)
+        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            //what will happen once user clicks add button item
+            if let textItem = textField.text, !textItem.isEmpty {
+                //if user entered text in field
+                self.itemArray.append(textItem)
+                self.tableView.reloadData()
+            }
+            else {
+                //if user didn't enter anything
+                let noItemAlert = UIAlertController(title: "nothing entered, nothing added", message: "", preferredStyle: .alert)
+                self.present(noItemAlert, animated: true)
+                self.dismiss(animated: true, completion: nil)
+            }
+            
+        }
+        
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Create new item"
+            textField = alertTextField
+            //extending scope of alertTextField
+        }
+        
+        alert.addAction(action)
+        
+        present(alert, animated: true, completion: nil)
+        
     }
     
     
