@@ -11,19 +11,26 @@ import UIKit
 class ToDoListViewController: UITableViewController {
     
     //MARK: Properties
-    var itemArray = ["Find Mike", "Buy Eggos", "Destroy Demog"]
+    var itemArray = [Item]()
     
-    let defaults = UserDefaults.standard
-    //interface to user defaults database where we store key/value pairs persistently across launches of the app
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    //grabbing the first item in this
+    
+//    let defaults = UserDefaults.standard
+//    //interface to user defaults database where we store key/value pairs persistently across launches of the app
     
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         
-        if let items = defaults.array(forKey: "TodoListArray") as? [String] {
-            itemArray = items
-        }
+        print(dataFilePath)
+        
+        let newItem = Item()
+        newItem.title = "Find Mike"
+        itemArray.append(newItem)
+        
+        loadItems()
     }
     
     //MARK: - Tableview Datasource Methods
@@ -32,10 +39,16 @@ class ToDoListViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        print("cellForRowAtIndexPath called.")
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
         
-        cell.textLabel?.text = itemArray[indexPath.row]
+        let item = itemArray[indexPath.row] //item we're currently trying to set up for the cell
+        
+        cell.textLabel?.text = item.title
+        
+        //Tenary operator
+        cell.accessoryType = item.done ? .checkmark : .none
         
         return cell
     }
@@ -43,13 +56,11 @@ class ToDoListViewController: UITableViewController {
     //MARK: TableView Delegate Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        //add a checkmark, or remove it if there already is one there 
-        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        }
-        else {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
+        //add a checkmark, or remove it if there already is one there
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        
+        
+        saveItems()
         
         tableView.deselectRow(at: indexPath, animated: true)
         //so that it goes back to being white and unselected
@@ -68,14 +79,15 @@ class ToDoListViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //what will happen once user clicks add button item
+            
+            let newItem = Item()
+            newItem.title = textField.text!
+            
             if let textItem = textField.text, !textItem.isEmpty {
                 //if user entered text in field
-                self.itemArray.append(textItem)
+                self.itemArray.append(newItem)
                 
-                //save updated item array to UserDefaults
-                self.defaults.set(self.itemArray, forKey: "TodoListArray")
-                
-                self.tableView.reloadData()
+                self.saveItems()
             }
             else {
                 //if user didn't enter anything
@@ -98,7 +110,33 @@ class ToDoListViewController: UITableViewController {
         
     }
     
+    //MARK: - Model Manipulation Methods
     
+    func saveItems() {
+        let encoder = PropertyListEncoder()
+        
+        do{
+            let data = try encoder.encode(itemArray)
+            try data.write(to: dataFilePath!)
+        } catch {
+            print("Error encoding item array, \(error)")
+        }
+        
+        
+        self.tableView.reloadData()
+    }
+    
+    func loadItems() {
+        if let data = try? Data(contentsOf: dataFilePath!) {
+        //use try to see if it worked then use optional binding to unwrap it safely
+        let decoder = PropertyListDecoder()
+        do {
+            itemArray =  try decoder.decode([Item].self, from: data)
+        } catch {
+            print("Error decoding item array, \(error)")
+        }
+    }
+    }
     
 
 }
