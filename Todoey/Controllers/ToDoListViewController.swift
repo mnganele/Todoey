@@ -7,11 +7,24 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoListViewController: UITableViewController {
     
     //MARK: Properties
     var itemArray = [Item]()
+    
+    var selectedCategory: Category? {
+    //will be nil until something is sent over
+        didSet {
+            //load items that are relevant to this category
+            loadItems()
+            //not being called before we have a value 
+        }
+    }
+    
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    //shared singleton, refers to current app as the object, tapping into its delegate and downcasting to AppDelegate object type
     
     let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     //grabbing the first item in this
@@ -25,12 +38,7 @@ class ToDoListViewController: UITableViewController {
         // Do any additional setup after loading the view.
         
         print(dataFilePath)
-        
-        let newItem = Item()
-        newItem.title = "Find Mike"
-        itemArray.append(newItem)
-        
-        loadItems()
+    
     }
     
     //MARK: - Tableview Datasource Methods
@@ -55,12 +63,15 @@ class ToDoListViewController: UITableViewController {
     
     //MARK: TableView Delegate Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+       
+//        context.delete(itemArray[indexPath.row]) //remove data from context
+//        itemArray.remove(at: indexPath.row)
         
         //add a checkmark, or remove it if there already is one there
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
         
-        saveItems()
+        saveItems() //save context and commit current status to our containers
         
         tableView.deselectRow(at: indexPath, animated: true)
         //so that it goes back to being white and unselected
@@ -79,9 +90,12 @@ class ToDoListViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //what will happen once user clicks add button item
-            
-            let newItem = Item()
+
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
+            newItem.parentCategory = self.selectedCategory
+            //parent category is available becasue we've set up the relationship 
             
             if let textItem = textField.text, !textItem.isEmpty {
                 //if user entered text in field
@@ -113,31 +127,88 @@ class ToDoListViewController: UITableViewController {
     //MARK: - Model Manipulation Methods
     
     func saveItems() {
-        let encoder = PropertyListEncoder()
         
         do{
-            let data = try encoder.encode(itemArray)
-            try data.write(to: dataFilePath!)
+            try context.save()
         } catch {
-            print("Error encoding item array, \(error)")
+            print("Error saving context \(error)")
         }
+        //setting up code to save core data for items that have been added using the UIAlert
         
         
         self.tableView.reloadData()
     }
     
-    func loadItems() {
-        if let data = try? Data(contentsOf: dataFilePath!) {
-        //use try to see if it worked then use optional binding to unwrap it safely
-        let decoder = PropertyListDecoder()
+    //load items from core data data model 
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
+        //default argument if none is supplied
+        
+        //Create NSPredicate to query items and get ones associated with selected category
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+        } else {
+            request.predicate = categoryPredicate
+        }//Make sure we're never unwrapping a nil value 
+        
+//        let compoundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, predicate])
+//        //create a compound predicate using sub-predicates
+//
+//        request.predicate = compoundPredicate
+//        //add this predicate to a request
+
+        
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
         do {
-            itemArray =  try decoder.decode([Item].self, from: data)
+            itemArray = try context.fetch(request) //fetching it and looking at current version
         } catch {
-            print("Error decoding item array, \(error)")
+            print("Error fetching data from context \(error)")
         }
-    }
+        //have to specify the data type and the entity we're trying to request
+        
+        tableView.reloadData()
     }
     
 
+}
+
+//extend the functionality of our todolistVC
+//MARK: - Search bar methods
+extension ToDoListViewController: UISearchBarDelegate {
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        //tells the delegate that the search button was tapped
+        //we need to reload the table view to rflect search results
+        //query our database and get back the result
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        
+       let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        //when we hit the search button whatever we passed into the searchBar is going to be the target text
+        //for all items in item array look for one where title of the item contains this text
+        
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        //an array of NSSortDescriptors
+        
+        loadItems(with: request, predicate: predicate)
+        
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            //there's nothing in the search bar
+            //Cross button clicked, nothing has been entered
+            loadItems()
+            
+            DispatchQueue.main.async { // run the method on the main queue 
+                searchBar.resignFirstResponder() //no longer thing that is currently selected, go to original state
+            }
+            //object that manages the excution of work items, assigns projects to different threads
+            
+            
+        }
+    }
+    
+    
 }
 
