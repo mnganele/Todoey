@@ -26,7 +26,7 @@ class ToDoListViewController: UITableViewController {
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     //shared singleton, refers to current app as the object, tapping into its delegate and downcasting to AppDelegate object type
     
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    //let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     //grabbing the first item in this
     
 //    let defaults = UserDefaults.standard
@@ -37,7 +37,7 @@ class ToDoListViewController: UITableViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         
-        print(dataFilePath)
+        //print(dataFilePath)
     
     }
     
@@ -150,7 +150,7 @@ class ToDoListViewController: UITableViewController {
             request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
         } else {
             request.predicate = categoryPredicate
-        }//Make sure we're never unwrapping a nil value 
+        }//Make sure we're never unwrapping a nil value
         
 //        let compoundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, predicate])
 //        //create a compound predicate using sub-predicates
